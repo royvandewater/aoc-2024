@@ -52,15 +52,14 @@ fn is_recklessly_safe(line: &Vec<isize>) -> bool {
 }
 
 fn to_leave_one_out_combinations(line: &Vec<isize>) -> Vec<Vec<isize>> {
-    let mut combinations: Vec<Vec<isize>> = vec![];
-
-    for (i, _item) in line.iter().enumerate() {
-        let mut combination = line.clone();
-        combination.remove(i);
-        combinations.push(combination);
-    }
-
-    return combinations;
+    line.iter()
+        .enumerate()
+        .map(|(i, _)| {
+            let mut combination = line.clone();
+            combination.remove(i);
+            return combination;
+        })
+        .collect()
 }
 
 fn to_directions(line: Vec<isize>) -> Vec<Direction> {
