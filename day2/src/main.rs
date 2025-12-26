@@ -4,40 +4,78 @@ fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input));
+    println!("part_2: {}", part_2(&input));
 }
 
 fn part_1(input: &str) -> usize {
-    input.trim().lines().map(parse_line).filter(is_safe).count()
+    input
+        .trim()
+        .lines()
+        .map(parse_line)
+        .map(to_directions)
+        .filter(is_conservatively_safe)
+        .count()
 }
 
-fn is_safe(line: &Vec<isize>) -> bool {
-    let directions = to_directions(line);
-
-    return directions.len() == 1 && !directions.contains(&Direction::Unsafe);
+fn part_2(input: &str) -> usize {
+    input
+        .trim()
+        .lines()
+        .map(parse_line)
+        .filter(is_recklessly_safe)
+        .count()
 }
 
-fn to_directions(line: &Vec<isize>) -> HashSet<Direction> {
-    let mut set: HashSet<Direction> = HashSet::new();
+fn is_conservatively_safe(directions: &Vec<Direction>) -> bool {
+    let set: HashSet<&Direction> = directions.iter().collect();
 
-    for window in line.windows(2) {
-        let a = window.iter().nth(0).unwrap();
-        let b = window.iter().nth(1).unwrap();
-        let diff = a - b;
+    return set.len() == 1 && !set.contains(&Direction::Unsafe);
+}
 
-        if -3 <= diff && diff < 0 {
-            set.insert(Direction::SafeDown);
-            continue;
-        }
+fn is_conservatively_safe_p(directions: Vec<Direction>) -> bool {
+    is_conservatively_safe(&directions)
+}
 
-        if 0 < diff && diff <= 3 {
-            set.insert(Direction::SafeUp);
-            continue;
-        }
+fn is_recklessly_safe(line: &Vec<isize>) -> bool {
+    let directions = to_directions(line.to_vec());
 
-        set.insert(Direction::Unsafe);
+    if is_conservatively_safe(&directions) {
+        return true;
     }
 
-    return set;
+    let combinations = to_leave_one_out_combinations(line);
+
+    combinations
+        .into_iter()
+        .map(to_directions)
+        .any(is_conservatively_safe_p)
+}
+
+fn to_leave_one_out_combinations(line: &Vec<isize>) -> Vec<Vec<isize>> {
+    let mut combinations: Vec<Vec<isize>> = vec![];
+
+    for (i, _item) in line.iter().enumerate() {
+        let mut combination = line.clone();
+        combination.remove(i);
+        combinations.push(combination);
+    }
+
+    return combinations;
+}
+
+fn to_directions(line: Vec<isize>) -> Vec<Direction> {
+    line.windows(2)
+        .map(|window| {
+            let a = window.iter().nth(0).unwrap();
+            let b = window.iter().nth(1).unwrap();
+
+            match a - b {
+                d if -3 <= d && d < 0 => Direction::SafeDown,
+                d if 0 < d && d <= 3 => Direction::SafeUp,
+                _ => Direction::Unsafe,
+            }
+        })
+        .collect()
 }
 
 #[derive(Hash, Eq, PartialEq)]
@@ -61,7 +99,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_example_1() {
+    fn test_part_1() {
         let input = "
             7 6 4 2 1
             1 2 7 8 9
@@ -76,7 +114,17 @@ mod tests {
     }
 
     #[test]
-    fn test_is_safe_line_1() {
-        assert!(is_safe(&vec![7, 6, 4, 2, 1]))
+    fn test_part_2() {
+        let input = "
+            7 6 4 2 1
+            1 2 7 8 9
+            9 7 6 2 1
+            1 3 2 4 5
+            8 6 4 4 1
+            1 3 6 7 9
+        "
+        .to_string();
+
+        assert_eq!(part_2(&input), 4);
     }
 }
