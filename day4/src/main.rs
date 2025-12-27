@@ -13,19 +13,14 @@ fn part_1(input: &str) -> usize {
         .map(|l| l.trim().chars().collect::<Vec<char>>())
         .collect();
 
-    lines
+    let coords: Vec<(isize, isize)> = lines
         .iter()
         .enumerate()
-        .map(|(y, line)| {
-            line.iter()
-                .enumerate()
-                .map(|(x, char)| match char {
-                    'X' => count_xmas(&lines, x.try_into().unwrap(), y.try_into().unwrap()),
-                    _ => 0,
-                })
-                .sum::<usize>()
-        })
-        .sum()
+        .flat_map(|(y, line)| line.iter().enumerate().map(move |(x, _)| (x, y)))
+        .map(|(x, y)| (isize::try_from(x).unwrap(), isize::try_from(y).unwrap()))
+        .collect();
+
+    coords.iter().map(|(x, y)| count_xmas(&lines, *x, *y)).sum()
 }
 
 fn part_2(input: &str) -> usize {
@@ -35,15 +30,16 @@ fn part_2(input: &str) -> usize {
         .map(|l| l.trim().chars().collect::<Vec<char>>())
         .collect();
 
-    lines
+    let coords: Vec<(isize, isize)> = lines
         .iter()
         .enumerate()
-        .map(|(y, line)| {
-            line.iter()
-                .enumerate()
-                .map(|(x, _)| count_x_mas(&lines, x.try_into().unwrap(), y.try_into().unwrap()))
-                .sum::<usize>()
-        })
+        .flat_map(|(y, line)| line.iter().enumerate().map(move |(x, _)| (x, y)))
+        .map(|(x, y)| (isize::try_from(x).unwrap(), isize::try_from(y).unwrap()))
+        .collect();
+
+    coords
+        .iter()
+        .map(|(x, y)| count_x_mas(&lines, *x, *y))
         .sum()
 }
 
