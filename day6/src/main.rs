@@ -1,10 +1,11 @@
+use rayon::prelude::*;
 use std::{collections::HashSet, fs::read_to_string};
 
 fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input));
-    // println!("part_2: {}", part_2(&input));
+    println!("part_2: {}", part_2(&input));
 }
 
 fn part_1(input: &str) -> usize {
@@ -16,12 +17,71 @@ fn part_1(input: &str) -> usize {
     positions.len()
 }
 
-// fn part_2(input: &str) -> usize {
-//     let input = trim_lines(input);
-//     let guard = find_guard(&input).unwrap();
-//     let trail = recursively_step(&input, &vec![guard]);
-//     trail.len()
-// }
+fn part_2(input: &str) -> usize {
+    let input = trim_lines(input);
+    let guard = find_guard(&input).unwrap();
+    let trail = recursively_step(&input, &HashSet::new(), &guard);
+
+    let total = find_potential_obstacles(&input, &trail).len();
+    println!("num_potential_obstacles: {}", total);
+
+    find_potential_obstacles(&input, &trail)
+        .par_iter()
+        .filter(|pos| is_loop(&insert_obstacle(&input, pos), &HashSet::new(), &guard))
+        .count()
+}
+
+fn is_loop(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> bool {
+    match step(input, &guard) {
+        None => false,
+        Some(next_guard) => match trail.contains(&next_guard) {
+            true => true,
+            false => {
+                let mut next_trail = trail.clone();
+                next_trail.insert(next_guard.clone());
+                is_loop(&input, &next_trail, &next_guard)
+            }
+        },
+    }
+}
+
+fn find_potential_obstacles(input: &str, trail: &HashSet<Guard>) -> HashSet<(usize, usize)> {
+    trail
+        .into_iter()
+        .skip(1) // we have to skip the first position because the guard would see us place the obstacle
+        .filter_map(|guard| {
+            let pos = guard.advance()?.pos();
+
+            match get_char_at_pos(input, &pos)? {
+                '#' => None,
+                _ => Some(pos),
+            }
+        })
+        .collect()
+}
+
+fn insert_obstacle(input: &str, pos: &(usize, usize)) -> String {
+    insert_char_at(input, pos, '#')
+}
+
+fn insert_char_at(input: &str, pos: &(usize, usize), n: char) -> String {
+    input
+        .lines()
+        .enumerate()
+        .map(|(y, line)| match y == pos.1 {
+            false => line.to_string(),
+            true => line
+                .chars()
+                .enumerate()
+                .map(|(x, c)| match x {
+                    x if x == pos.0 => n,
+                    _ => c,
+                })
+                .collect(),
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
 fn trim_lines(input: &str) -> String {
     input
@@ -146,20 +206,20 @@ mod tests {
     }
 
     // #[ignore]
-    // #[test]
-    // fn test_part_2_example() {
-    //     let input = "
-    //         ....#.....
-    //         .........#
-    //         ..........
-    //         ..#.......
-    //         .......#..
-    //         ..........
-    //         .#..^.....
-    //         ........#.
-    //         #.........
-    //         ......#...";
+    #[test]
+    fn test_part_2_example() {
+        let input = "
+            ....#.....
+            .........#
+            ..........
+            ..#.......
+            .......#..
+            ..........
+            .#..^.....
+            ........#.
+            #.........
+            ......#...";
 
-    //     assert_eq!(part_2(&input), 6);
-    // }
+        assert_eq!(part_2(&input), 6);
+    }
 }
