@@ -76,23 +76,26 @@ fn loop_to_string(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> String 
 //     that it performed in the past. This is defined as their current
 //     direction and position is already present in the trail
 fn find_obstacles(input: &str) -> HashSet<(usize, usize)> {
-    let guard = find_guard(&input).unwrap();
-    let trail = recursively_step(&input, &HashSet::new(), &guard);
-    let in_front_of_guard = guard.advance().unwrap();
+    let og_guard = find_guard(&input).unwrap();
+    let trail = recursively_step(&input, &HashSet::new(), &og_guard);
+    let in_front_of_guard = og_guard.advance().unwrap();
 
     let mut trail = trail.clone();
     trail.remove(&in_front_of_guard);
     trail
         .par_iter()
-        .filter_map(|guard| Some((guard, guard.advance()?)))
-        .filter_map(|(guard, next)| Some((get_char_at_pos(input, &next.pos())?, guard, next)))
-        .filter_map(|(tile, guard, next)| match (tile, guard, next.pos()) {
-            ('#', _, _) => None,
-            (_, guard, pos) => {
-                match is_loop(&insert_obstacle(&input, &pos), &HashSet::new(), &guard) {
-                    false => None,
-                    true => Some(pos),
-                }
+        .filter_map(|guard| {
+            let next = guard.advance()?;
+            let pos = next.pos();
+            let tile = get_char_at_pos(input, &pos)?;
+
+            if tile == '#' {
+                return None;
+            }
+
+            match is_loop(&insert_obstacle(&input, &pos), &HashSet::new(), &og_guard) {
+                false => None,
+                true => Some(pos),
             }
         })
         .collect()
@@ -198,9 +201,9 @@ fn find_guard(input: &str) -> Option<Guard> {
 
     match c {
         '^' => Some(Guard::North(pos)),
-        '>' => Some(Guard::West(pos)),
+        '>' => Some(Guard::East(pos)),
         'v' => Some(Guard::South(pos)),
-        '<' => Some(Guard::East(pos)),
+        '<' => Some(Guard::West(pos)),
         _ => panic!("Unrecognized guard position: {} ({}, {})", c, pos.0, pos.1),
     }
 }
