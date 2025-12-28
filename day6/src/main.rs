@@ -4,23 +4,24 @@ fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input));
-    println!("part_2: {}", part_2(&input));
+    // println!("part_2: {}", part_2(&input));
 }
 
 fn part_1(input: &str) -> usize {
     let input = trim_lines(input);
     let guard = find_guard(&input).unwrap();
-    let trail = recursively_step(&input, &vec![guard]);
+    let trail = recursively_step(&input, &HashSet::new(), &guard);
+
     let positions: HashSet<_> = trail.iter().map(|g| g.pos()).collect();
     positions.len()
 }
 
-fn part_2(input: &str) -> usize {
-    let input = trim_lines(input);
-    let guard = find_guard(&input).unwrap();
-    let trail = recursively_step(&input, &vec![guard]);
-    trail.len()
-}
+// fn part_2(input: &str) -> usize {
+//     let input = trim_lines(input);
+//     let guard = find_guard(&input).unwrap();
+//     let trail = recursively_step(&input, &vec![guard]);
+//     trail.len()
+// }
 
 fn trim_lines(input: &str) -> String {
     input
@@ -31,16 +32,13 @@ fn trim_lines(input: &str) -> String {
         .join("\n")
 }
 
-fn recursively_step(input: &str, trail: &Vec<Guard>) -> Vec<Guard> {
-    assert!(!trail.is_empty(), "trail must not be empty");
-    let guard = trail.last().unwrap();
-
-    match step(input, guard) {
+fn recursively_step(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> HashSet<Guard> {
+    match step(input, &guard) {
         None => trail.clone(),
         Some(next_guard) => {
             let mut next_trail = trail.clone();
-            next_trail.push(next_guard);
-            recursively_step(&input, &next_trail)
+            next_trail.insert(next_guard.clone());
+            recursively_step(&input, &next_trail, &next_guard)
         }
     }
 }
@@ -60,7 +58,7 @@ fn get_char_at_pos(input: &str, (x, y): &(usize, usize)) -> Option<char> {
     input.lines().nth(*y)?.chars().nth(*x)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum Guard {
     North((usize, usize)),
     East((usize, usize)),
@@ -147,21 +145,21 @@ mod tests {
         assert_eq!(part_1(&input), 41);
     }
 
-    #[ignore]
-    #[test]
-    fn test_part_2_example() {
-        let input = "
-            ....#.....
-            .........#
-            ..........
-            ..#.......
-            .......#..
-            ..........
-            .#..^.....
-            ........#.
-            #.........
-            ......#...";
+    // #[ignore]
+    // #[test]
+    // fn test_part_2_example() {
+    //     let input = "
+    //         ....#.....
+    //         .........#
+    //         ..........
+    //         ..#.......
+    //         .......#..
+    //         ..........
+    //         .#..^.....
+    //         ........#.
+    //         #.........
+    //         ......#...";
 
-        assert_eq!(part_2(&input), 6);
-    }
+    //     assert_eq!(part_2(&input), 6);
+    // }
 }
