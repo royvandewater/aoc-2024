@@ -17,25 +17,21 @@ fn part_1(input: &str) -> usize {
     positions.len()
 }
 
+// 1756 is too low
+// 1797 is too high
 fn part_2(input: &str) -> usize {
-    let input = trim_lines(input);
-    let guard = find_guard(&input).unwrap();
-    let trail = recursively_step(&input, &HashSet::new(), &guard);
-
-    let total = find_potential_obstacles(&input, &trail).len();
-    println!("num_potential_obstacles: {}", total);
-
-    find_potential_obstacles(&input, &trail)
-        .par_iter()
-        .filter(|pos| is_loop(&insert_obstacle(&input, pos), &HashSet::new(), &guard))
-        .count()
+    find_obstacles(&trim_lines(input)).len()
 }
 
 fn is_loop(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> bool {
     match step(input, &guard) {
+        // we have stepped out of bounds, so no loop
         None => false,
+        // we are in bounds, let's see if we've been here before
         Some(next_guard) => match trail.contains(&next_guard) {
+            // We are repeating a previous step, so we must be in a loop
             true => true,
+            // we are somewhere unique, advance until we loop or step out of bounds
             false => {
                 let mut next_trail = trail.clone();
                 next_trail.insert(next_guard.clone());
@@ -45,16 +41,58 @@ fn is_loop(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> bool {
     }
 }
 
-fn find_potential_obstacles(input: &str, trail: &HashSet<Guard>) -> HashSet<(usize, usize)> {
-    trail
-        .into_iter()
-        .skip(1) // we have to skip the first position because the guard would see us place the obstacle
-        .filter_map(|guard| {
-            let pos = guard.advance()?.pos();
+#[allow(dead_code)]
+fn loop_to_string(input: &str, trail: &HashSet<Guard>, guard: &Guard) -> String {
+    let original_guard = find_guard(input).unwrap();
 
-            match get_char_at_pos(input, &pos)? {
-                '#' => None,
-                _ => Some(pos),
+    let output = insert_char_at(input, &original_guard.pos(), '.');
+    let output = trail.iter().fold(output.to_string(), |acc, g| {
+        let existing = get_char_at_pos(&acc, &g.pos()).unwrap();
+
+        let c = match (existing, g) {
+            ('-', Guard::North(_) | Guard::South(_)) => '+',
+            (_, Guard::North(_) | Guard::South(_)) => '|',
+            ('|', Guard::East(_) | Guard::West(_)) => '+',
+            (_, Guard::East(_) | Guard::West(_)) => '-',
+        };
+        insert_char_at(&acc, &g.pos(), c)
+    });
+
+    let c = match guard {
+        Guard::North(_) => 'N',
+        Guard::East(_) => 'E',
+        Guard::South(_) => 'S',
+        Guard::West(_) => 'W',
+    };
+    insert_char_at(&output, &guard.pos(), c)
+}
+
+// Returns every coordinate that:
+//   * Is not directly in front of the guard at the start
+//   * Is directly in front of the guard at some point on their route
+//   * Is contained within the map
+//   * Is not already an obstacle
+//   * Causes the guard to deviate such that it repeats an exact step
+//     that it performed in the past. This is defined as their current
+//     direction and position is already present in the trail
+fn find_obstacles(input: &str) -> HashSet<(usize, usize)> {
+    let guard = find_guard(&input).unwrap();
+    let trail = recursively_step(&input, &HashSet::new(), &guard);
+    let in_front_of_guard = guard.advance().unwrap();
+
+    let mut trail = trail.clone();
+    trail.remove(&in_front_of_guard);
+    trail
+        .par_iter()
+        .filter_map(|guard| Some((guard, guard.advance()?)))
+        .filter_map(|(guard, next)| Some((get_char_at_pos(input, &next.pos())?, guard, next)))
+        .filter_map(|(tile, guard, next)| match (tile, guard, next.pos()) {
+            ('#', _, _) => None,
+            (_, guard, pos) => {
+                match is_loop(&insert_obstacle(&input, &pos), &HashSet::new(), &guard) {
+                    false => None,
+                    true => Some(pos),
+                }
             }
         })
         .collect()
@@ -65,22 +103,15 @@ fn insert_obstacle(input: &str, pos: &(usize, usize)) -> String {
 }
 
 fn insert_char_at(input: &str, pos: &(usize, usize), n: char) -> String {
-    input
-        .lines()
-        .enumerate()
-        .map(|(y, line)| match y == pos.1 {
-            false => line.to_string(),
-            true => line
-                .chars()
-                .enumerate()
-                .map(|(x, c)| match x {
-                    x if x == pos.0 => n,
-                    _ => c,
-                })
-                .collect(),
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let (x, y) = pos;
+    let row_length = input.lines().nth(0).unwrap().len() + 1; // plus 1 for the newline
+    let mut output = input.to_string();
+    let i = (y * row_length) + x;
+    let range = i..i + 1;
+    output.replace_range(range, &n.to_string());
+
+    assert_ne!(input, output, "Input and output should not be the same");
+    return output;
 }
 
 fn trim_lines(input: &str) -> String {
@@ -109,7 +140,7 @@ fn step(input: &str, guard: &Guard) -> Option<Guard> {
     let next_tile = get_char_at_pos(input, &next_guard.pos())?;
 
     match next_tile {
-        '#' => step(input, &guard.rotate()),
+        '#' => Some(guard.rotate()),
         _ => Some(next_guard),
     }
 }
@@ -205,7 +236,6 @@ mod tests {
         assert_eq!(part_1(&input), 41);
     }
 
-    // #[ignore]
     #[test]
     fn test_part_2_example() {
         let input = "
@@ -221,5 +251,33 @@ mod tests {
             ......#...";
 
         assert_eq!(part_2(&input), 6);
+    }
+
+    #[test]
+    fn test_insert_char_at_when_one_char() {
+        let result = insert_char_at(".", &(0, 0), 'X');
+        assert_eq!(result, "X");
+    }
+
+    #[test]
+    fn test_insert_char_at_when_two_lines_char() {
+        let input = trim_lines(
+            "
+            .
+            .
+        ",
+        );
+        let result = insert_char_at(&input, &(0, 0), 'X');
+        assert_eq!(result, "X\n.");
+        let result = insert_char_at(&input, &(0, 1), 'X');
+        assert_eq!(result, ".\nX");
+    }
+
+    #[test]
+    fn test_insert_char_at_when_two_chars() {
+        let result = insert_char_at("..", &(0, 0), 'X');
+        assert_eq!(result, "X.");
+        let result = insert_char_at("..", &(1, 0), 'X');
+        assert_eq!(result, ".X");
     }
 }
