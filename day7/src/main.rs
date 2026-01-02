@@ -1,6 +1,8 @@
-mod is_solveable;
+mod part_1;
+mod part_2;
 
-use is_solveable::is_solveable;
+use part_1::is_solveable as part_1_is_solveable;
+use part_2::is_solveable as part_2_is_solveable;
 use std::{fs::read_to_string, num::ParseIntError, str::FromStr};
 use thiserror::Error;
 
@@ -8,26 +10,31 @@ fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input).unwrap());
+    println!("part_2: {}", part_2(&input).unwrap());
 }
 
-#[derive(Error, Debug)]
-enum Part1Err {
-    #[error("Failed to parse input")]
-    InputLineParseErr(#[from] InputLineParseErr),
-}
-
-fn part_1(input: &str) -> Result<usize, Part1Err> {
-    let result = input
+fn part_1(input: &str) -> Result<usize, InputLineParseErr> {
+    Ok(input
         .trim()
         .lines()
         .map(|l| l.parse::<InputLine>())
         .collect::<Result<Vec<_>, _>>()?
         .iter()
-        .filter(|line| is_solveable(line.target, &line.values))
+        .filter(|line| part_1_is_solveable(line.target, &line.values))
         .map(|line| line.target)
-        .sum();
+        .sum())
+}
 
-    Ok(result)
+fn part_2(input: &str) -> Result<usize, InputLineParseErr> {
+    Ok(input
+        .trim()
+        .lines()
+        .map(|l| l.parse::<InputLine>())
+        .collect::<Result<Vec<_>, _>>()?
+        .iter()
+        .filter(|line| part_2_is_solveable(line.target, &line.values))
+        .map(|line| line.target)
+        .sum())
 }
 
 struct InputLine {
@@ -74,5 +81,13 @@ mod tests {
         let result = part_1(&input).unwrap();
 
         assert_eq!(result, 3749);
+    }
+
+    #[test]
+    fn test_part_2_example() {
+        let input = read_to_string("./input_example.txt").unwrap();
+        let result = part_2(&input).unwrap();
+
+        assert_eq!(result, 11387);
     }
 }
