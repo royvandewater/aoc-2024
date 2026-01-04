@@ -8,6 +8,22 @@ fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input));
+    println!("part_2: {}", part_2(&input));
+}
+
+fn part_1(input: &str) -> usize {
+    find_trailheads(input)
+        .values()
+        .map(unique_reachable_peaks_for_paths)
+        .map(|reachable_peaks| reachable_peaks.len())
+        .sum()
+}
+
+fn part_2(input: &str) -> usize {
+    find_trailheads(input)
+        .values()
+        .map(|peaks| peaks.len())
+        .sum()
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -30,7 +46,9 @@ impl From<(usize, usize)> for XY {
     }
 }
 
-fn part_1(input: &str) -> usize {
+type Path = Vec<XY>;
+
+fn group_squares_by_value(input: &str) -> HashMap<usize, Vec<XY>> {
     let squares_by_value: HashMap<usize, Vec<XY>> = input
         .trim()
         .lines()
@@ -41,21 +59,30 @@ fn part_1(input: &str) -> usize {
             })
         })
         .into_group_map();
+    squares_by_value
+}
 
+fn find_trailheads(input: &str) -> HashMap<XY, Vec<Vec<XY>>> {
+    let squares_by_value = group_squares_by_value(input);
     let mut previous = initialize_peaks(squares_by_value.get(&9).unwrap());
 
     for value in (0..=8).rev() {
         let squares = squares_by_value.get(&value).unwrap();
-        previous = find_reachable_peaks(&previous, squares);
+        previous = find_paths(&previous, squares);
     }
 
-    previous.values().map(|peaks| peaks.len()).sum()
+    previous
 }
 
-fn find_reachable_peaks(
-    previous: &HashMap<XY, HashSet<XY>>,
-    squares: &Vec<XY>,
-) -> HashMap<XY, HashSet<XY>> {
+fn unique_reachable_peaks_for_paths(paths: &Vec<Path>) -> HashSet<XY> {
+    paths
+        .iter()
+        .map(|path| path.first().unwrap())
+        .cloned()
+        .collect()
+}
+
+fn find_paths(previous: &HashMap<XY, Vec<Path>>, squares: &Vec<XY>) -> HashMap<XY, Vec<Path>> {
     squares
         .iter()
         .map(|square| {
@@ -64,20 +91,21 @@ fn find_reachable_peaks(
                 square
                     .neighbors()
                     .iter()
-                    .filter_map(|xy| previous.get(xy))
+                    .filter_map(|path| previous.get(path))
                     .flatten()
-                    .cloned()
-                    .collect::<HashSet<XY>>(),
+                    .map(|path| {
+                        let mut path = path.clone();
+                        path.push(square.clone());
+                        path
+                    })
+                    .collect::<Vec<Path>>(),
             )
         })
         .collect()
 }
 
-fn initialize_peaks(coords: &Vec<XY>) -> HashMap<XY, HashSet<XY>> {
-    coords
-        .iter()
-        .map(|xy| (*xy, HashSet::from([*xy])))
-        .collect()
+fn initialize_peaks(coords: &Vec<XY>) -> HashMap<XY, Vec<Path>> {
+    coords.iter().map(|xy| (*xy, vec![vec![*xy]])).collect()
 }
 
 #[cfg(test)]
@@ -99,6 +127,23 @@ mod test {
         let result = part_1(&input);
 
         assert_eq!(result, 36);
+    }
+
+    #[test]
+    fn test_part_2_example() {
+        let input = "
+            89010123
+            78121874
+            87430965
+            96549874
+            45678903
+            32019012
+            01329801
+            10456732
+        ";
+        let result = part_2(&input);
+
+        assert_eq!(result, 81);
     }
 
     #[test]
@@ -133,19 +178,19 @@ mod test {
     #[test]
     fn test_reachable_peaks() {
         let previous = HashMap::from([
-            (XY(0, 6), HashSet::from([XY(0, 6)])),
-            (XY(6, 6), HashSet::from([XY(6, 6)])),
+            (XY(0, 6), vec![vec![XY(0, 6)]]),
+            (XY(6, 6), vec![vec![XY(6, 6)]]),
         ]);
 
         let squares = vec![XY(0, 5), XY(6, 5)];
 
-        let reachable = find_reachable_peaks(&previous, &squares);
+        let reachable = find_paths(&previous, &squares);
 
         assert_eq!(
             reachable,
             HashMap::from([
-                (XY(0, 5), HashSet::from([XY(0, 6)])),
-                (XY(6, 5), HashSet::from([XY(6, 6)])),
+                (XY(0, 5), vec![vec![XY(0, 6), XY(0, 5)]]),
+                (XY(6, 5), vec![vec![XY(6, 6), XY(6, 5)]]),
             ])
         )
     }
