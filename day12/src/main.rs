@@ -5,12 +5,18 @@ use std::fs::read_to_string;
 
 fn main() {
     let input = read_to_string("./input.txt").unwrap();
+    let regions = parse_to_regions(&input);
 
-    println!("part_1: {}", part_1(&input));
+    println!("part_1: {}", part_1(&regions));
+    println!("part_2: {}", part_2(&regions));
 }
 
-fn part_1(input: &str) -> usize {
-    parse_to_regions(input).iter().map(|r| r.price()).sum()
+fn part_1(regions: &Vec<Region>) -> usize {
+    regions.iter().map(|r| r.circumference_based_price()).sum()
+}
+
+fn part_2(regions: &Vec<Region>) -> usize {
+    regions.iter().map(|r| r.sides_based_price()).sum()
 }
 
 fn parse_to_regions(input: &str) -> Vec<Region> {
@@ -37,17 +43,46 @@ mod test {
     #[test]
     fn test_part_1_example() {
         let input = read_to_string("./input_example.txt").unwrap();
-        let result = part_1(&input);
+        let regions = parse_to_regions(&input);
+        let result = part_1(&regions);
 
         assert_eq!(result, 772);
     }
 
     #[test]
+    fn test_part_1_small_example() {
+        let input = read_to_string("./input_small_example.txt").unwrap();
+        let regions = parse_to_regions(&input);
+        let result = part_1(&regions);
+
+        assert_eq!(result, 140);
+    }
+
+    #[test]
     fn test_part_1_larger_example() {
         let input = read_to_string("./input_larger_example.txt").unwrap();
-        let result = part_1(&input);
+        let regions = parse_to_regions(&input);
+        let result = part_1(&regions);
 
         assert_eq!(result, 1930);
+    }
+
+    #[test]
+    fn test_part_2_example() {
+        let input = read_to_string("./input_example.txt").unwrap();
+        let regions = parse_to_regions(&input);
+        let result = part_2(&regions);
+
+        assert_eq!(result, 436);
+    }
+
+    #[test]
+    fn test_part_2_small_example() {
+        let input = read_to_string("./input_small_example.txt").unwrap();
+        let regions = parse_to_regions(&input);
+        let result = part_2(&regions);
+
+        assert_eq!(result, 80);
     }
 
     #[test]
