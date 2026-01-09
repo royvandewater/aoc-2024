@@ -8,6 +8,15 @@ pub(crate) struct Button {
     pub(crate) y: usize,
 }
 
+impl Into<(isize, isize)> for Button {
+    fn into(self) -> (isize, isize) {
+        (
+            isize::try_from(self.x).unwrap(),
+            isize::try_from(self.y).unwrap(),
+        )
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ButtonParseError {
     #[error("Parse called on an invalid button string: `{0}`")]

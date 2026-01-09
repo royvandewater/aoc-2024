@@ -1,11 +1,31 @@
 use itertools::Itertools;
-use std::{num::ParseIntError, str::FromStr};
+use std::{num::ParseIntError, ops::Add, str::FromStr};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct Prize {
     pub(crate) x: usize,
     pub(crate) y: usize,
+}
+
+impl Add<usize> for Prize {
+    type Output = Prize;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Prize {
+            x: self.x + rhs,
+            y: self.y + rhs,
+        }
+    }
+}
+
+impl Into<(isize, isize)> for Prize {
+    fn into(self) -> (isize, isize) {
+        (
+            isize::try_from(self.x).unwrap(),
+            isize::try_from(self.y).unwrap(),
+        )
+    }
 }
 
 #[derive(Debug, Error)]
