@@ -1,7 +1,8 @@
 mod machine;
 
+use itertools::Itertools;
 use machine::Machine;
-use std::fs::read_to_string;
+use std::{fs::read_to_string, ops::RangeInclusive};
 
 fn main() {
     let input = read_to_string("./input.txt").unwrap();
@@ -17,15 +18,29 @@ fn part_1(input: &str) -> usize {
 }
 
 fn cost_of_cheapest_combination(input: &str) -> Option<usize> {
-    let _machine: Machine = input.parse().unwrap();
-    Some(280)
+    let machine: Machine = input.parse().unwrap();
+
+    let range: RangeInclusive<usize> = 0..=100;
+
+    let button_a_movements = range.clone().map(|i| (machine.a.x * i, machine.a.y * i));
+    let button_b_movements = range.clone().map(|i| (machine.b.x * i, machine.b.y * i));
+    let prize = machine.prize;
+
+    button_a_movements
+        .enumerate()
+        .cartesian_product(button_b_movements.enumerate())
+        .find_map(|((na, (xa, ya)), (nb, (xb, yb)))| {
+            match (xa + xb, ya + yb) == (prize.x, prize.y) {
+                true => Some((na * 3) + nb),
+                false => None,
+            }
+        })
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[ignore]
     #[test]
     fn test_part_1_example_1() {
         let input = read_to_string("./input_example.txt").unwrap();
@@ -34,7 +49,6 @@ mod test {
         assert_eq!(result, 480);
     }
 
-    #[ignore]
     #[test]
     fn test_cost_of_cheapest_combination_base_case() {
         let input = "
@@ -47,7 +61,6 @@ mod test {
         assert_eq!(result, 3);
     }
 
-    #[ignore]
     #[test]
     fn test_cost_of_cheapest_combination_example_machine_1() {
         let input = "

@@ -11,9 +11,9 @@ use crate::machine::prize::PrizeParseError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Machine {
-    a: Button,
-    b: Button,
-    prize: Prize,
+    pub(crate) a: Button,
+    pub(crate) b: Button,
+    pub(crate) prize: Prize,
 }
 
 #[derive(Debug, Error)]
