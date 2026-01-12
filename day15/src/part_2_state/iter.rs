@@ -2,11 +2,23 @@ use core::panic;
 use std::collections::{HashMap, VecDeque};
 
 use super::Part2State;
+use crate::part_2_state::tile::Tile;
+
+
+use Tile::*;
 
 type XY = (usize, usize);
 
+// #[repr(u8)]
+// enum Direction {
+//     N = b'^',
+//     S = b'v',
+//     W = b'<',
+//     E = b'>',
+// }
+
 pub struct Iter {
-    tiles: HashMap<XY, char>,
+    tiles: HashMap<XY, Tile>,
     robot: XY,
     instructions: VecDeque<char>,
 
@@ -14,9 +26,8 @@ pub struct Iter {
 
 impl Iter {
     pub fn new(state: &Part2State) -> Self {
-
         Iter{ 
-            tiles: state.tiles.clone(), 
+            tiles: state.tiles.clone(),
             robot: state.robot, 
             instructions: state.instructions.iter().cloned().collect(),
         }
@@ -24,23 +35,23 @@ impl Iter {
 
     #[allow(unused)]
     fn is_wall(&self, xy: &XY) -> bool {
-        matches!(self.tiles.get(xy), Some(c) if *c == '#')
+        matches!(self.tiles.get(xy), Some(c) if *c == Wall)
     }
 
     // returns true if the tile can be moved, will recursively
     // check boxes that are in the way
     fn can_move_tile(&self, xy: XY, instruction: char) -> bool {
-        if *self.tiles.get(&xy).unwrap() == '#' {
+        if *self.tiles.get(&xy).unwrap() == Wall {
             return false;
         }
 
         let next_xy = apply_instruction(xy, instruction);
 
         match self.tiles.get(&next_xy).unwrap() {
-            '#' => false,
-            '@' => true,
-            '.' => true,
-            '[' => {
+            Wall => false,
+            Robot => true,
+            Empty => true,
+            LeftBox => {
                 match instruction {
                     '<' | '>' => self.can_move_tile(next_xy, instruction),
                     '^' | 'v' => {
@@ -50,7 +61,7 @@ impl Iter {
                     _ => panic!("Unrecognized instruction: {}", instruction),
                 }
             },
-            ']' => {
+            RightBox => {
                 match instruction {
                     '<' | '>' => self.can_move_tile(next_xy, instruction),
                     '^' | 'v' => {
@@ -60,7 +71,6 @@ impl Iter {
                     _ => panic!("Unrecognized instruction: {}", instruction),
                 }
             },
-            c => panic!("Unrecognized tile: {}", c),
         }
     }
 
@@ -69,17 +79,21 @@ impl Iter {
     fn move_tile(&mut self, xy: XY, instruction: char) {
         let tile = *self.tiles.get(&xy).unwrap();
 
-        if tile == '#' {
+        if tile == Wall {
             panic!("Don't try to move the wall! {:?}", xy);
         }
 
         let next_xy = apply_instruction(xy, instruction);
 
         match self.tiles.get(&next_xy).unwrap() {
-            '#' => panic!("Tried to move something into a wall! {:?}", xy),
-            '[' => {
+            Wall => panic!("Tried to move something into a wall! {:?}", xy),
+            Empty | Robot => {
+                self.tiles.insert(xy, Empty);
+                self.tiles.insert(next_xy, tile);
+            },
+            LeftBox => {
                 self.move_tile(next_xy, instruction);
-                self.tiles.insert(xy, '.');
+                self.tiles.insert(xy, Empty);
                 self.tiles.insert(next_xy, tile);
 
                 match instruction {
@@ -91,9 +105,9 @@ impl Iter {
                     _ => panic!("Unrecognized instruction: {}", instruction),
                 };
             },
-            ']' => {
+            RightBox => {
                 self.move_tile(next_xy, instruction);
-                self.tiles.insert(xy, '.');
+                self.tiles.insert(xy, Empty);
                 self.tiles.insert(next_xy, tile);
 
                 match instruction {
@@ -105,11 +119,6 @@ impl Iter {
                     _ => panic!("Unrecognized instruction: {}", instruction),
                 };
             },
-            '.' => {
-                self.tiles.insert(xy, '.');
-                self.tiles.insert(next_xy, tile);
-            },
-            c => panic!("Unrecognized tile: {}", c),
         };
     }
 }

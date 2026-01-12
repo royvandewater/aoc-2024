@@ -1,14 +1,16 @@
 mod iter;
+mod tile;
 
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 use thiserror::Error;
 use iter::Iter;
+use tile::Tile;
 
 type XY = (usize, usize);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Part2State {
-    tiles: HashMap<XY, char>,
+    tiles: HashMap<XY, Tile>,
     robot: XY,
    instructions: Vec<char>,
 }
@@ -23,11 +25,11 @@ impl Part2State {
         let (tiles_str, instructions_str) = input.split_once("\n\n").unwrap_or((input, ""));
 
         
-        let tiles: HashMap<XY, char> = tiles_str.lines().enumerate().flat_map(|(y, line)| {
-            line.trim().chars().enumerate().map(move |(x, c)| ((x, y), c))
+        let tiles: HashMap<XY, Tile> = tiles_str.lines().enumerate().flat_map(|(y, line)| {
+            line.trim().chars().enumerate().map(move |(x, c)| ((x, y), c.try_into().unwrap()))
         }).collect();
 
-        let (robot,_) = tiles.clone().into_iter().find(|(xy, c)| *c == '@').unwrap_or(((0,0), '@'));
+        let (robot,_) = tiles.clone().into_iter().find(|(xy, c)| *c == Tile::Robot).unwrap_or(((0,0), Tile::Robot));
 
         let instructions: Vec<char> = instructions_str.lines().flat_map(|l| l.trim().chars()).collect();
 
@@ -39,7 +41,7 @@ impl Part2State {
     pub(crate) fn score(&self) -> usize {
         self.tiles
             .iter()
-            .filter_map(|(xy, tile)| match *tile == '[' {
+            .filter_map(|(xy, tile)| match *tile == Tile::LeftBox {
                 true => Some(*xy),
                 false => None,
             })
@@ -50,15 +52,6 @@ impl Part2State {
     pub(crate) fn iter(&self) -> Iter {
         Iter::new(self)
     }
-}
-
-#[derive(Debug, Error)]
-pub enum Part2StateParseError {
-    #[error("Malformed State: {0}")]
-    MalformedState(String),
-
-    #[error("No Robot found on map: {0}")]
-    NoRobotFound(String),
 }
 
 impl Display for Part2State {
@@ -72,7 +65,7 @@ impl Display for Part2State {
                     for x in 0..=*max_x {
                         match self.tiles.get(&(x,y)) {
                             None => panic!("No tile available for coordinates: {:?}", (x,y)),
-                            Some(tile) => f.write_fmt(format_args!("{}",tile))?,
+                            Some(tile) => f.write_fmt(format_args!("{}", tile))?,
                         }
                     }
 
@@ -92,6 +85,18 @@ impl Display for Part2State {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum Part2StateParseError {
+    #[error("Malformed State: {0}")]
+    MalformedState(String),
+
+    #[error("No Robot found on map: {0}")]
+    NoRobotFound(String),
+
+    #[error("Invalid tile: {0}")]
+    InvalidTile(char)
+}
+
 use Part2StateParseError::*;
 
 impl FromStr for Part2State {
@@ -99,24 +104,33 @@ impl FromStr for Part2State {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (tiles, instructions) = s.trim().split_once("\n\n").ok_or(MalformedState(s.to_string()))?;
-        let tiles: HashMap<XY, char> = tiles.lines().enumerate().flat_map(|(y, line)| {
-            line.trim().chars().enumerate().flat_map(move |(x, c)| {
+        let tiles: HashMap<XY, Tile> = tiles
+            .lines()
+            .enumerate()
+            .flat_map(|(y, line)| {
+                line.trim().chars().enumerate().map(move |(x, c)| {
+                    ((x, y), c)
+                })
+            }).map(|((x, y), c)| {
                 let (x1,y1) = (x * 2, y);
                 let (x2,y2) = (x1 + 1, y1);
 
                 match c { 
-                    '@' => vec![((x1, y1), '@'), ((x2, y2), '.')],
-                    '#' => vec![((x1, y1), '#'), ((x2, y2), '#')],
-                    'O' => vec![((x1, y1), '['), ((x2, y2), ']')],
-                    '.' => vec![((x1, y1), '.'), ((x2, y2), '.')],
-                    _ => panic!("unrecognized tile type: '{}'", c),
+                    '@' => Ok(vec![((x1, y1), Tile::Robot), ((x2, y2), Tile::Empty)]),
+                    '#' => Ok(vec![((x1, y1), Tile::Wall), ((x2, y2), Tile::Wall)]),
+                    'O' => Ok(vec![((x1, y1), Tile::LeftBox), ((x2, y2), Tile::RightBox)]),
+                    '.' => Ok(vec![((x1, y1), Tile::Empty), ((x2, y2), Tile::Empty)]),
+                    _ => Err(Part2StateParseError::InvalidTile(c)),
                 }
-            })
-        }).collect();
+            }).collect::<Result<Vec<_>, Part2StateParseError>>()?
+              .into_iter()
+              .flatten()
+              .collect();
+
         let instructions: Vec<char> = instructions.lines().flat_map(|line| line.trim().chars()).collect();
 
         let robot = tiles.iter().find_map(|(xy, c)| match c {
-            '@' => Some(*xy),
+            Tile::Robot => Some(*xy),
             _ => None,
         }).ok_or(NoRobotFound(s.to_string()))?;
 
@@ -129,6 +143,7 @@ impl FromStr for Part2State {
 #[cfg(test)]
 mod test {
     use super::*;
+    use Tile::*;
 
     #[test]
     fn test_score_example() {
@@ -256,7 +271,7 @@ mod test {
         let result: Part2State = input.parse().unwrap();
 
         assert_eq!(result, Part2State{
-            tiles: HashMap::from([ ((0,0), '@'), ((1, 0), '.')]),
+            tiles: HashMap::from([ ((0,0), Robot), ((1, 0), Empty)]),
             robot: (0,0),
             instructions: vec!['<'],
         });
@@ -273,8 +288,8 @@ mod test {
         let result: Part2State = input.parse().unwrap();
 
         assert_eq!(result, Part2State{
-            tiles: HashMap::from([ ((0,0), '#'), ((1,0), '#'), ((2,0), '@'), ((3,0), '.'),
-                                   ((0,1), '.'), ((1,1), '.'), ((2,1), '['), ((3,1), ']')]),
+            tiles: HashMap::from([ ((0,0), Wall), ((1,0), Wall), ((2,0), Robot), ((3,0), Empty),
+                                   ((0,1), Empty), ((1,1), Empty), ((2,1), LeftBox), ((3,1), RightBox)]),
             robot: (2,0),
             instructions: vec!['<'],
         });
@@ -291,7 +306,7 @@ mod test {
         let result: Part2State = input.parse().unwrap();
 
         assert_eq!(result, Part2State{
-            tiles: HashMap::from([ ((0,0), '@'), ((1,0), '.') ]),
+            tiles: HashMap::from([ ((0,0), Robot), ((1,0), Empty) ]),
             robot: (0,0),
             instructions: vec!['<', '>', '^', 'v'],
         });
