@@ -20,15 +20,15 @@ impl Display for Tile {
     }
 }
 
-impl Into<char> for Tile {
-    fn into(self) -> char  {
-        (&self).into()
+impl From<Tile> for char {
+    fn from(val: Tile) -> Self  {
+        (&val).into()
     }
 }
 
-impl Into<char> for &Tile {
-    fn into(self) -> char  {
-        match self {
+impl From<&Tile> for char {
+    fn from(val: &Tile) -> Self  {
+        match val {
             Tile::Empty => '.',
             Tile::Robot => '@',
             Tile::LeftBox => '[',

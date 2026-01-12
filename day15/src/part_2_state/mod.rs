@@ -1,9 +1,11 @@
+mod instruction;
 mod iter;
 mod tile;
 
+use instruction::{Instruction,InvalidInstructionError};
+use iter::Iter;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 use thiserror::Error;
-use iter::Iter;
 use tile::Tile;
 
 type XY = (usize, usize);
@@ -12,7 +14,7 @@ type XY = (usize, usize);
 pub struct Part2State {
     tiles: HashMap<XY, Tile>,
     robot: XY,
-   instructions: Vec<char>,
+    instructions: Vec<Instruction>,
 }
 
 impl Part2State {
@@ -29,9 +31,17 @@ impl Part2State {
             line.trim().chars().enumerate().map(move |(x, c)| ((x, y), c.try_into().unwrap()))
         }).collect();
 
-        let (robot,_) = tiles.clone().into_iter().find(|(xy, c)| *c == Tile::Robot).unwrap_or(((0,0), Tile::Robot));
+        let (robot,_) = tiles
+            .clone()
+            .into_iter()
+            .find(|(xy, c)| *c == Tile::Robot)
+            .unwrap_or(((0,0), Tile::Robot));
 
-        let instructions: Vec<char> = instructions_str.lines().flat_map(|l| l.trim().chars()).collect();
+        let instructions: Vec<Instruction> = instructions_str
+            .lines()
+            .flat_map(|l| l.trim().chars())
+            .map(|c| c.try_into().unwrap())
+            .collect();
 
         Part2State {
             tiles, robot, instructions
@@ -94,7 +104,10 @@ pub enum Part2StateParseError {
     NoRobotFound(String),
 
     #[error("Invalid tile: {0}")]
-    InvalidTile(char)
+    InvalidTile(char),
+
+    #[error("Invalid direction: {0}")]
+    InvalidDirection(#[from] InvalidInstructionError),
 }
 
 use Part2StateParseError::*;
@@ -127,7 +140,11 @@ impl FromStr for Part2State {
               .flatten()
               .collect();
 
-        let instructions: Vec<char> = instructions.lines().flat_map(|line| line.trim().chars()).collect();
+        let instructions: Vec<Instruction> = instructions
+            .lines()
+            .flat_map(|line| line.trim().chars())
+            .map(|c| Instruction::try_from(c))
+            .collect::<Result<_, _>>()?;
 
         let robot = tiles.iter().find_map(|(xy, c)| match c {
             Tile::Robot => Some(*xy),
@@ -189,7 +206,7 @@ mod test {
             .@..
 
             <
-        "));
+        "), "\n\nresult:\n{}", result);
     }
 
     #[test]
@@ -273,7 +290,7 @@ mod test {
         assert_eq!(result, Part2State{
             tiles: HashMap::from([ ((0,0), Robot), ((1, 0), Empty)]),
             robot: (0,0),
-            instructions: vec!['<'],
+            instructions: vec![Instruction::W],
         });
     }
 
@@ -291,7 +308,7 @@ mod test {
             tiles: HashMap::from([ ((0,0), Wall), ((1,0), Wall), ((2,0), Robot), ((3,0), Empty),
                                    ((0,1), Empty), ((1,1), Empty), ((2,1), LeftBox), ((3,1), RightBox)]),
             robot: (2,0),
-            instructions: vec!['<'],
+            instructions: vec![Instruction::W],
         });
     }
 
@@ -308,7 +325,7 @@ mod test {
         assert_eq!(result, Part2State{
             tiles: HashMap::from([ ((0,0), Robot), ((1,0), Empty) ]),
             robot: (0,0),
-            instructions: vec!['<', '>', '^', 'v'],
+            instructions: vec![Instruction::W, Instruction::E, Instruction::N, Instruction::S],
         });
     }
 }
