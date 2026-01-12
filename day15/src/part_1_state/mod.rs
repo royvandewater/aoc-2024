@@ -7,13 +7,13 @@ use iter::Iter;
 type XY = (usize, usize);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct State {
+pub struct Part1State {
     tiles: HashMap<XY, char>,
     robot: XY,
    instructions: Vec<char>,
 }
 
-impl State {
+impl Part1State {
     pub(crate) fn score(&self) -> usize {
         self.tiles
             .iter()
@@ -31,7 +31,7 @@ impl State {
 }
 
 #[derive(Debug, Error)]
-pub enum StateParseError {
+pub enum Part1StateParseError {
     #[error("Malformed State: {0}")]
     MalformedState(String),
 
@@ -39,7 +39,7 @@ pub enum StateParseError {
     NoRobotFound(String),
 }
 
-impl Display for State {
+impl Display for Part1State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let max_x = self.tiles.keys().map(|(x,_y)| x).max();
         let max_y = self.tiles.keys().map(|(_x,y)| y).max();
@@ -70,10 +70,10 @@ impl Display for State {
     }
 }
 
-use StateParseError::*;
+use Part1StateParseError::*;
 
-impl FromStr for State {
-    type Err = StateParseError;
+impl FromStr for Part1State {
+    type Err = Part1StateParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (tiles, instructions) = s.trim().split_once("\n\n").ok_or(MalformedState(s.to_string()))?;
@@ -89,7 +89,7 @@ impl FromStr for State {
 
 
 
-        Ok(State{ tiles, robot, instructions })
+        Ok(Part1State{ tiles, robot, instructions })
     }
 }
 
@@ -106,7 +106,7 @@ mod test {
 
             <
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.score();
         assert_eq!(result, 104);
     }
@@ -125,7 +125,7 @@ mod test {
 
             <
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.score();
         assert_eq!(result, 2028);
     }
@@ -137,7 +137,7 @@ mod test {
 
             <<
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.iter().next();
 
         assert_eq!(result, Some("
@@ -154,7 +154,7 @@ mod test {
 
             <<
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.iter().next();
 
         assert_eq!(result, Some("
@@ -171,7 +171,7 @@ mod test {
 
             <<
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.iter().next();
 
         assert_eq!(result, Some("
@@ -188,7 +188,7 @@ mod test {
 
             <<
         ";
-        let sut: State = input.parse().unwrap();
+        let sut: Part1State = input.parse().unwrap();
         let result = sut.iter().next();
 
         assert_eq!(result, Some("
@@ -205,9 +205,9 @@ mod test {
 
             <
         ";
-        let result: State = input.parse().unwrap();
+        let result: Part1State = input.parse().unwrap();
 
-        assert_eq!(result, State{
+        assert_eq!(result, Part1State{
             tiles: HashMap::from([ ((0,0), '@'), ]),
             robot: (0,0),
             instructions: vec!['<'],
@@ -222,9 +222,9 @@ mod test {
 
             <
         ";
-        let result: State = input.parse().unwrap();
+        let result: Part1State = input.parse().unwrap();
 
-        assert_eq!(result, State{
+        assert_eq!(result, Part1State{
             tiles: HashMap::from([ ((0,0), '#'), ((1,0), '@'), ((0,1), '.'), ((1,1), 'O')]),
             robot: (1,0),
             instructions: vec!['<'],
@@ -239,9 +239,9 @@ mod test {
             <>
             ^v
         ";
-        let result: State = input.parse().unwrap();
+        let result: Part1State = input.parse().unwrap();
 
-        assert_eq!(result, State{
+        assert_eq!(result, Part1State{
             tiles: HashMap::from([ ((0,0), '@') ]),
             robot: (0,0),
             instructions: vec!['<', '>', '^', 'v'],

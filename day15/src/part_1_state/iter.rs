@@ -1,7 +1,7 @@
 use core::panic;
 use std::collections::{HashMap, VecDeque};
 
-use super::State;
+use super::Part1State;
 
 type XY = (usize, usize);
 
@@ -13,7 +13,7 @@ pub struct Iter {
 }
 
 impl Iter {
-    pub fn new(state: &State) -> Self {
+    pub fn new(state: &Part1State) -> Self {
 
         Iter{ 
             tiles: state.tiles.clone(), 
@@ -63,7 +63,7 @@ impl Iter {
 
 
 impl Iterator for Iter {
-    type Item = State;
+    type Item = Part1State;
 
     fn next(&mut self) -> Option<Self::Item> {
         let instruction = self.instructions.pop_front()?;
@@ -72,7 +72,7 @@ impl Iterator for Iter {
             self.robot = xy 
         }
         
-        Some(State {
+        Some(Part1State {
             tiles: self.tiles.clone(),
             robot: self.robot,
             instructions: self.instructions.iter().cloned().collect(),
