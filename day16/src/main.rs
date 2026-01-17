@@ -20,6 +20,7 @@ fn main() {
     let input = read_to_string("./input.txt").unwrap();
 
     println!("part_1: {}", part_1(&input).unwrap());
+    println!("part_2: {}", part_2(&input).unwrap());
 }
 
 #[derive(Debug, Error)]
@@ -48,6 +49,77 @@ fn part_1(input: &str) -> Result<usize, Day16Error> {
         .get(&(start, East))
         .ok_or(NoPathToEnd)
         .cloned()
+}
+
+fn part_2(input: &str) -> Result<usize, Day16Error> {
+    let input = trim_lines(input);
+    let start = find_start(&input).ok_or(NoStart)?;
+    let end = find_end(&input).ok_or(NoEnd)?;
+    let empty_spaces = find_empty_spaces(&input);
+    let cheapest_paths = find_cheapest_paths(&empty_spaces, end);
+
+    let cost = cheapest_paths
+        .get(&(start, East))
+        .ok_or(NoPathToEnd)
+        .cloned()?;
+
+    let route = walk(&cheapest_paths, (start, East), cost);
+
+    Ok(route.len())
+}
+
+fn walk(
+    cheapest_paths: &HashMap<(XY, Direction), usize>,
+    space: (XY, Direction),
+    max_cost: usize,
+) -> HashSet<XY> {
+    let (xy, direction) = space;
+
+    // we now need to decide if we want to move forward, turn left, or turn right. We will go
+    // with which every option exists in cheapest path and has the lowest cost
+    let forward_direction = direction;
+    let forward_space = (xy.apply_direction(&forward_direction), forward_direction);
+    let forward_cost = cheapest_paths.get(&forward_space).map(|cost| cost + 1);
+
+    let cw_direction = direction.clockwise();
+    let cw_space = (xy, cw_direction);
+    let cw_cost = cheapest_paths.get(&cw_space).map(|cost| cost + 1000);
+
+    let ccw_direction = direction.counter_clockwise();
+    let ccw_space = (xy, ccw_direction);
+    let ccw_cost = cheapest_paths.get(&ccw_space).map(|cost| cost + 1000);
+
+    let spaces_with_costs: Vec<_> = [
+        (forward_space, forward_cost),
+        (cw_space, cw_cost),
+        (ccw_space, ccw_cost),
+    ]
+    .into_iter()
+    .filter_map(|(s, c)| Some((s, c?)))
+    .filter(|(_s, c)| *c <= max_cost)
+    .collect();
+
+    let min_cost = spaces_with_costs.iter().map(|(_s, c)| c).cloned().min();
+
+    match min_cost {
+        None => HashSet::new(),
+        Some(0) => spaces_with_costs
+            .iter()
+            .filter(|(_s, c)| *c == 1)
+            .flat_map(|(space, _)| HashSet::from([xy, space.0]))
+            .collect(),
+        Some(min_cost) => spaces_with_costs
+            .iter()
+            .filter(|(_s, c)| *c == min_cost)
+            .flat_map(|(space, cost)| {
+                let space = *space;
+                let mut path = walk(cheapest_paths, space, *cost);
+                path.insert(xy);
+                path.insert(space.0);
+                path
+            })
+            .collect(),
+    }
 }
 
 fn trim_lines(s: &str) -> String {
@@ -175,5 +247,60 @@ mod test {
         let result = part_1(&input).unwrap();
 
         assert_eq!(result, 11048);
+    }
+
+    #[test]
+    fn test_part_2_simplest() {
+        let input = "####
+                     #SE#
+                     ####";
+        let result = part_2(input).unwrap(); // all it has to do is step forward
+
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn test_part_2_one_path() {
+        // shortest is step forward, ccw, forward. cost: 1002
+        //
+        let input = "####
+                     #.E#
+                     #S.#
+                     ####";
+        let result = part_2(input).unwrap();
+
+        assert_eq!(result, 3); // (2,2), (3,2), (3,1)
+    }
+
+    #[test]
+    fn test_part_2_two_paths() {
+        // going either way around the wall should have equal cost: 3004
+        let input = "#####
+                     #...#
+                     #S#E#
+                     #...#
+                     #####";
+        let result = part_2(input).unwrap();
+
+        // route a: (2,1), (1,1), (2,1), (3,1), (3,2)
+        // route b: (2,1), (1,3), (2,3), (3,3), (3,2)
+        // first & last of the routes are the same
+        assert_eq!(result, 8);
+    }
+
+    #[test]
+    fn test_part_2_example() {
+        let input = read_to_string("./input_example.txt").unwrap();
+        let result = part_2(&input).unwrap();
+
+        assert_eq!(result, 45);
+    }
+
+    #[test]
+    fn test_part_2_example_2() {
+        let input = read_to_string("./input_example_2.txt").unwrap();
+        let result = part_2(&input).unwrap();
+
+        assert_eq!(result, 64);
     }
 }
