@@ -1,0 +1,11 @@
+[package]
+name = "day17"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+itertools = "0.14.0"
+thiserror = "2.0.18"
+
+[dev-dependencies]
+ntest = "0.9.5"
