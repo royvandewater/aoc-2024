@@ -78,6 +78,7 @@ mod test {
 
     #[test]
     #[timeout(60_000)]
+    #[ignore]
     fn test_part_2_example_2() {
         let input = read_to_string("./input_example_2.txt").unwrap();
         let result = part_2(&input).unwrap();

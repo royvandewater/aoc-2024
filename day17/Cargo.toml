@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 itertools = "0.14.0"
-memoize = "0.6.0"
 thiserror = "2.0.18"
 
 [dev-dependencies]

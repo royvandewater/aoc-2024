@@ -2,8 +2,6 @@ use itertools::Itertools;
 use std::{num::ParseIntError, str::FromStr};
 use thiserror::Error;
 
-use crate::computer::state::State;
-
 use super::Computer;
 
 #[derive(Debug, Error)]
@@ -46,14 +44,12 @@ impl FromStr for Computer {
             .try_collect()?;
 
         Ok(Computer {
-            state: State {
-                a,
-                b,
-                c,
-                program,
-                pointer: 0,
-                output: vec![],
-            },
+            a,
+            b,
+            c,
+            program,
+            pointer: 0,
+            output: vec![],
         })
     }
 }
@@ -83,14 +79,12 @@ mod test {
         assert_eq!(
             input.parse::<Computer>().unwrap(),
             Computer {
-                state: State {
-                    a: 0,
-                    b: 0,
-                    c: 0,
-                    program: vec![],
-                    pointer: 0,
-                    output: vec![],
-                }
+                a: 0,
+                b: 0,
+                c: 0,
+                program: vec![],
+                pointer: 0,
+                output: vec![],
             }
         );
     }
@@ -108,14 +102,12 @@ mod test {
         assert_eq!(
             input.parse::<Computer>().unwrap(),
             Computer {
-                state: State {
-                    a: 1,
-                    b: 2,
-                    c: 3,
-                    program: vec![],
-                    pointer: 0,
-                    output: vec![],
-                }
+                a: 1,
+                b: 2,
+                c: 3,
+                program: vec![],
+                pointer: 0,
+                output: vec![],
             }
         );
     }
@@ -133,14 +125,12 @@ mod test {
         assert_eq!(
             input.parse::<Computer>().unwrap(),
             Computer {
-                state: State {
-                    a: 0,
-                    b: 0,
-                    c: 0,
-                    program: vec![1, 2, 3, 4, 5],
-                    pointer: 0,
-                    output: vec![],
-                }
+                a: 0,
+                b: 0,
+                c: 0,
+                program: vec![1, 2, 3, 4, 5],
+                pointer: 0,
+                output: vec![],
             }
         );
     }
