@@ -5,14 +5,14 @@ use thiserror::Error;
 
 pub(crate) use from_str::ComputerParseError;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Computer {
-    a: usize,
-    b: usize,
-    c: usize,
-    pointer: usize,
-    program: Vec<usize>,
-    output: Vec<usize>,
+    pub(crate) a: usize,
+    pub(crate) b: usize,
+    pub(crate) c: usize,
+    pub(crate) pointer: usize,
+    pub(crate) program: Vec<usize>,
+    pub(crate) output: Vec<usize>,
 }
 
 #[derive(Debug, Error)]
@@ -56,6 +56,25 @@ impl Computer {
             .join(",")
     }
 
+    #[allow(unused)]
+    pub(crate) fn program_as_string(&self) -> String {
+        self.program
+            .iter()
+            .map(|v| format!("{}", v))
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    /// initialize register :a to value
+    pub(crate) fn initialize_a(&mut self, value: usize) {
+        self.a = value
+    }
+
+    /// checks to see if the current output equals the program
+    pub(crate) fn has_output_itself(&self) -> bool {
+        self.output == self.program
+    }
+
     pub(crate) fn run(&mut self) -> Result<(), RuntimeError> {
         loop {
             match self.step() {
@@ -65,6 +84,44 @@ impl Computer {
                 Err(e) => return Err(e),
             }
         }
+    }
+
+    /// runs as long as the output is a subset of the program instructions. Will
+    /// early return as soon as the program outputs a value that doesn't match
+    /// the program.
+    pub(crate) fn run_for_matching_output(&mut self) -> Result<(), RuntimeError> {
+        loop {
+            match self.step() {
+                Ok(_) => self.pointer += 2,
+                Err(JumpNoAdvancePointer) => {}
+                Err(NoMoreInstructions) => return Ok(()), // execution is done
+                Err(e) => return Err(e),
+            }
+
+            if !self.output_is_matching_so_far() {
+                return Ok(()); // abort
+            }
+        }
+    }
+
+    fn output_is_matching_so_far(&self) -> bool {
+        self.output
+            .iter()
+            .enumerate()
+            .all(|(i, x)| match self.program.get(i) {
+                None => false,
+                Some(y) => x == y,
+            })
+    }
+
+    pub(crate) fn output_starts_with(&self, numbers: &Vec<usize>) -> bool {
+        numbers
+            .iter()
+            .enumerate()
+            .all(|(i, x)| match self.output.get(i) {
+                None => false,
+                Some(y) => x == y,
+            })
     }
 
     fn step(&mut self) -> Result<(), RuntimeError> {
@@ -80,7 +137,7 @@ impl Computer {
             2 => self.bst(combo),
             3 => self.jnz(combo),
             4 => self.bxc(),
-            5 => self.output(combo),
+            5 => self.out(combo),
             6 => self.bdv(combo),
             7 => self.cdv(combo),
             _ => Err(UnrecognizedInstruction(instruction)),
@@ -111,7 +168,7 @@ impl Computer {
     /// divide :a by 2^combo, store in :a
     fn adv(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
         let combo = self.combo(combo_literal)?;
-        self.a /= 2_usize.pow(u32::try_from(combo)?);
+        self.a >>= combo;
         Ok(())
     }
 
@@ -121,7 +178,7 @@ impl Computer {
         Ok(())
     }
 
-    /// :b % 8, store in :b
+    /// combo % 8, store in :b
     fn bst(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
         let combo = self.combo(combo_literal)?;
         self.b = combo % 8;
@@ -146,7 +203,7 @@ impl Computer {
     }
 
     /// add combo to output
-    fn output(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
+    fn out(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
         let combo = self.combo(combo_literal)? % 8;
         self.output.push(combo);
         Ok(())
@@ -155,20 +212,22 @@ impl Computer {
     /// divide :a by 2^combo, store in :b
     fn bdv(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
         let combo = self.combo(combo_literal)?;
-        self.b = self.a / 2_usize.pow(u32::try_from(combo)?);
+        self.b = self.a >> combo;
         Ok(())
     }
 
     /// divide :a by 2^combo, store in :c
     fn cdv(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
         let combo = self.combo(combo_literal)?;
-        self.c = self.a / 2_usize.pow(u32::try_from(combo)?);
+        self.c = self.a >> combo;
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::fs::read_to_string;
+
     use ntest::timeout;
 
     use super::*;
@@ -401,5 +460,17 @@ mod test {
         computer.run().unwrap();
 
         assert_eq!(computer.b, 44354);
+    }
+
+    #[test]
+    #[timeout(1000)]
+    fn test_example_equals_itself() {
+        let input = read_to_string("./input_example_2.txt").unwrap();
+        let mut computer: Computer = input.parse().unwrap();
+
+        computer.a = 117440;
+        computer.run().unwrap();
+
+        assert_eq!(computer.output, computer.program);
     }
 }
