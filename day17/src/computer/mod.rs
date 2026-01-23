@@ -66,11 +66,13 @@ impl Computer {
     }
 
     /// initialize register :a to value
+    #[allow(unused)]
     pub(crate) fn initialize_a(&mut self, value: usize) {
         self.a = value
     }
 
     /// checks to see if the current output equals the program
+    #[allow(unused)]
     pub(crate) fn has_output_itself(&self) -> bool {
         self.output == self.program
     }
@@ -89,6 +91,7 @@ impl Computer {
     /// runs as long as the output is a subset of the program instructions. Will
     /// early return as soon as the program outputs a value that doesn't match
     /// the program.
+    #[allow(unused)]
     pub(crate) fn run_for_matching_output(&mut self) -> Result<(), RuntimeError> {
         loop {
             match self.step() {
@@ -109,16 +112,6 @@ impl Computer {
             .iter()
             .enumerate()
             .all(|(i, x)| match self.program.get(i) {
-                None => false,
-                Some(y) => x == y,
-            })
-    }
-
-    pub(crate) fn output_starts_with(&self, numbers: &Vec<usize>) -> bool {
-        numbers
-            .iter()
-            .enumerate()
-            .all(|(i, x)| match self.output.get(i) {
                 None => false,
                 Some(y) => x == y,
             })
@@ -202,10 +195,10 @@ impl Computer {
         Ok(())
     }
 
-    /// add combo to output
+    /// add combo % 8 to output
     fn out(&mut self, combo_literal: usize) -> Result<(), RuntimeError> {
-        let combo = self.combo(combo_literal)? % 8;
-        self.output.push(combo);
+        let combo = self.combo(combo_literal)?;
+        self.output.push(combo % 8);
         Ok(())
     }
 

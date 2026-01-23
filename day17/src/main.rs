@@ -1,6 +1,8 @@
 mod computer;
+mod custom_program;
+mod custom_program_a;
 
-use std::fs::read_to_string;
+use std::{fs::read_to_string, time::Instant};
 use thiserror::Error;
 
 use crate::computer::{Computer, ComputerParseError, RuntimeError};
@@ -46,15 +48,28 @@ fn part_2(input: &str) -> Result<usize, ComputerError> {
     //     0b11101011010000010101000101111,
     // ];
 
-    let prototype = input.parse::<Computer>()?;
+    // let prototype = input.parse::<Computer>()?;
 
-    let start: usize = 0;
-    for i in start.. {
-        let mut computer = prototype.clone();
-        computer.initialize_a(i);
-        computer.run_for_matching_output()?;
+    // first output with length 16
+    let start: usize = 35_184_372_088_832;
+    // last output with length 16
+    let end: usize = 281_474_976_710_655;
+    //
+    // 281474976710655 - 35184372088832 = 246_290_604_621_823
+    // it currently takes 5 seconds per billion
+    // we need to try 246_290 billion inputs, 5 * 246290 = 1,231,450 seconds, which is 14 weeks
 
-        if computer.has_output_itself() {
+    let mut start_time = Instant::now();
+
+    for i in start..end {
+        if i % 1_000_000_000 == 0 {
+            let elapsed_ms = start_time.elapsed().as_millis();
+            println!("i: {i}. elapsed: {elapsed_ms}ms");
+            let output = custom_program::run_for_output(i);
+            println!("output: {output:?}");
+            start_time = Instant::now();
+        }
+        if custom_program::run(i) {
             return Ok(i);
         }
     }
@@ -78,7 +93,6 @@ mod test {
 
     #[test]
     #[timeout(60_000)]
-    #[ignore]
     fn test_part_2_example_2() {
         let input = read_to_string("./input_example_2.txt").unwrap();
         let result = part_2(&input).unwrap();
