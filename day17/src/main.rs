@@ -1,13 +1,9 @@
 mod computer;
-mod reverse_computer;
 
 use std::fs::read_to_string;
 use thiserror::Error;
 
-use crate::{
-    computer::{Computer, ComputerParseError, RuntimeError},
-    reverse_computer::{ReverseComputer, ReverseError},
-};
+use crate::computer::{Computer, ComputerParseError, RuntimeError};
 
 fn main() {
     let input = read_to_string("./input.txt").unwrap();
@@ -24,9 +20,6 @@ enum ComputerError {
 
     #[error("Runtime Error")]
     RuntimeError(#[from] RuntimeError),
-
-    #[error("Reverse Error")]
-    ReverseError(#[from] ReverseError),
 }
 
 fn part_1(input: &str) -> Result<String, ComputerError> {
@@ -37,11 +30,6 @@ fn part_1(input: &str) -> Result<String, ComputerError> {
 
 #[allow(unused)]
 fn part_2(input: &str) -> Result<usize, ComputerError> {
-    let prototype: Computer = input.parse()?;
-    let mut reverse_computer: ReverseComputer = prototype.into();
-    let a = reverse_computer.run()?;
-    Ok(a)
-
     // we already know it's not in the first 20 billion
     // let start = 20_000_000_000;
     // let start = 280_000_000_000_000; it's somewhere around this order or magnitude
@@ -58,34 +46,20 @@ fn part_2(input: &str) -> Result<usize, ComputerError> {
     //     0b11101011010000010101000101111,
     // ];
 
-    // let start: usize = 0;
-    // for i in start.. {
-    //     for suffix in suffixes.iter() {
-    //         let x = (i << 29) | suffix;
+    let prototype = input.parse::<Computer>()?;
 
-    //         // println!("i:      {i}");
-    //         // println!("suffix: {i:b}{suffix:b}");
-    //         // println!("x:      {x:b}");
-    //         let mut computer = prototype.clone();
-    //         computer.initialize_a(x);
-    //         computer.run_for_matching_output()?;
+    let start: usize = 0;
+    for i in start.. {
+        let mut computer = prototype.clone();
+        computer.initialize_a(i);
+        computer.run_for_matching_output()?;
 
-    //         // Program: 2,4,1,1,7,5,4,4,1,4,0,3,5,5,3,0
-    //         let prefix: Vec<usize> = vec![2, 4, 1, 1, 7, 5, 4, 4, 1, 4];
-    //         if computer.output_starts_with(&prefix) {
-    //             // println!("i: {i}");
-    //             println!("x:b: {x:b}\t{x}");
-    //             // println!("program: {}", computer.program_as_string());
-    //             // println!("output:  {}", computer.output_as_string());
-    //         }
+        if computer.has_output_itself() {
+            return Ok(i);
+        }
+    }
 
-    //         if computer.has_output_itself() {
-    //             return Ok(i);
-    //         }
-    //     }
-    // }
-
-    // panic!("Should be unreachable")
+    panic!("Should be unreachable")
 }
 
 #[cfg(test)]
