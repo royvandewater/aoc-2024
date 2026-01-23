@@ -36,6 +36,7 @@ pub(crate) fn run(initial_a: usize) -> bool {
     }
 }
 
+#[allow(unused)]
 pub(crate) fn run_for_output(a: usize) -> Vec<usize> {
     let mut a = a;
     let mut b = 0;
@@ -59,4 +60,20 @@ pub(crate) fn run_for_output(a: usize) -> Vec<usize> {
             return output;
         }
     }
+}
+
+#[allow(unused)]
+pub(crate) fn find_target_input(i: usize) -> Option<usize> {
+    let output = run_for_output(i);
+    if output == EXPECTED_OUTPUT {
+        return Some(i);
+    }
+    if !EXPECTED_OUTPUT.ends_with(&output) {
+        return None;
+    }
+
+    (0b000..=0b111).find_map(|suffix| {
+        let next = (i << 3) | suffix; // concats the suffix to i
+        find_target_input(next)
+    })
 }

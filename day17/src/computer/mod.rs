@@ -108,13 +108,7 @@ impl Computer {
     }
 
     fn output_is_matching_so_far(&self) -> bool {
-        self.output
-            .iter()
-            .enumerate()
-            .all(|(i, x)| match self.program.get(i) {
-                None => false,
-                Some(y) => x == y,
-            })
+        self.program.ends_with(&self.output)
     }
 
     fn step(&mut self) -> Result<(), RuntimeError> {
@@ -215,6 +209,25 @@ impl Computer {
         self.c = self.a >> combo;
         Ok(())
     }
+}
+
+pub(crate) fn find_target_input(prototype: &Computer, a: usize) -> Option<usize> {
+    let mut computer = prototype.clone();
+
+    computer.initialize_a(a);
+    computer.run().unwrap();
+
+    if computer.has_output_itself() {
+        return Some(a);
+    }
+    if !computer.output_is_matching_so_far() {
+        return None;
+    }
+
+    (0b000..=0b111).find_map(|suffix| match (a << 3) | suffix {
+        0 => None,
+        next_a => find_target_input(prototype, next_a),
+    })
 }
 
 #[cfg(test)]
