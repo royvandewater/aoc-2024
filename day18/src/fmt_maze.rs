@@ -33,6 +33,17 @@ impl Display for FormattedMaze {
     }
 }
 
+impl From<(&Maze, Bounds)> for FormattedMaze {
+    fn from((maze, bounds): (&Maze, Bounds)) -> Self {
+        let maze: HashMap<XY, char> = maze.iter().map(|xy| (*xy, '#')).collect();
+
+        let mut tiles = HashMap::new();
+        tiles.extend(maze);
+
+        FormattedMaze { tiles, bounds }
+    }
+}
+
 impl From<(&Maze, &Visited, Bounds)> for FormattedMaze {
     fn from((maze, visited, bounds): (&Maze, &Visited, Bounds)) -> Self {
         let maze: HashMap<XY, char> = maze.iter().map(|xy| (*xy, '#')).collect();

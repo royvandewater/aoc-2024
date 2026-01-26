@@ -1,4 +1,3 @@
-use memoize::memoize;
 use std::collections::{HashMap, HashSet, VecDeque};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -32,7 +31,6 @@ pub(crate) fn shortest_path_length(
     Ok(path.len() - 1)
 }
 
-#[memoize(Ignore: maze, Ignore: visited)]
 fn shortest_path(
     maze: &HashSet<XY>,
     bounds: (XY, XY),
