@@ -1,19 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::direction::Direction;
-use crate::maze::{Maze, Tile};
+use crate::maze::Tile;
 
 type XY = (usize, usize);
-type Move = (XY, XY);
 
-pub(crate) fn find_shortest_path(maze: &Maze) -> Option<Vec<Move>> {
-    walk(&maze.grid, &HashSet::new(), maze.start)
+pub(crate) fn find_shortest_path(grid: &HashMap<XY, Tile>, start: XY) -> Option<Vec<XY>> {
+    walk(grid, &HashSet::new(), start)
 }
 
-fn walk(grid: &HashMap<XY, Tile>, visited: &HashSet<XY>, current: XY) -> Option<Vec<Move>> {
+fn walk(grid: &HashMap<XY, Tile>, visited: &HashSet<XY>, current: XY) -> Option<Vec<XY>> {
     match grid.get(&current) {
         None | Some(Tile::Wall) => return None,
-        Some(Tile::End) => return Some(vec![]),
+        Some(Tile::End) => return Some(vec![current]),
         _ => {}
     }
 
@@ -27,22 +26,22 @@ fn walk(grid: &HashMap<XY, Tile>, visited: &HashSet<XY>, current: XY) -> Option<
                 false => Some(next),
             }
         })
-        .filter_map(|next| Some([vec![(current, next)], walk(grid, &visited, next)?].concat()))
+        .filter_map(|next| Some([vec![current], walk(grid, &visited, next)?].concat()))
         .min_by(|a, b| a.len().cmp(&b.len()))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::maze::Maze;
     use Direction::*;
 
-    fn m(xy: XY, directions: Vec<Direction>) -> Vec<Move> {
+    fn m(xy: XY, directions: Vec<Direction>) -> Vec<XY> {
         let (_, path) = directions
             .iter()
-            .fold((xy, vec![]), |(current, path), direction| {
+            .fold((xy, vec![xy]), |(current, path), direction| {
                 let next = direction.step(current).unwrap();
-                let current_move: Move = (current, next);
-                (next, [path, vec![current_move]].concat())
+                (next, [path, vec![next]].concat())
             });
         path
     }
@@ -55,9 +54,9 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
-        assert_eq!(result, vec![((0, 0), (1, 0))]);
+        assert_eq!(result, vec![(0, 0), (1, 0)]);
     }
 
     #[test]
@@ -69,7 +68,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![South]));
     }
@@ -83,7 +82,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![South, East, East, North]));
     }
@@ -97,7 +96,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![East]));
     }

@@ -32,6 +32,10 @@ impl Direction {
         }
     }
 
+    pub(crate) fn cheat(self, xy: XY) -> Option<XY> {
+        self.step(self.step(xy)?)
+    }
+
     pub(crate) fn clockwise(self) -> Direction {
         match self {
             North => East,

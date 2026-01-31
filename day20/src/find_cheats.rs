@@ -1,119 +1,45 @@
-use std::collections::{HashMap, HashSet};
-use std::slice::Iter;
+use std::collections::HashMap;
 
-use crate::maze::{Maze, Tile};
+use crate::direction::Direction;
+use crate::find_shortest_path;
+use crate::maze::Tile;
 
 type XY = (usize, usize);
-type Move = (XY, XY);
 
-pub(crate) fn find_cheats(maze: &Maze, max_length: usize) -> Vec<Vec<Move>> {
-    walk(&maze.grid, &HashSet::new(), maze.start, max_length, false).unwrap_or(vec![])
-}
+pub(crate) fn find_cheats(grid: &HashMap<XY, Tile>, start: XY, max_length: usize) -> Vec<Vec<XY>> {
+    let shortest_path = find_shortest_path(grid, start).unwrap();
 
-fn walk(
-    grid: &HashMap<XY, Tile>,
-    visited: &HashSet<XY>,
-    current: XY,
-    steps_remaining: usize,
-    cheat_used: bool,
-) -> Option<Vec<Vec<Move>>> {
-    match grid.get(&current) {
-        Some(Tile::End) => return Some(vec![vec![]]),
-        None | Some(Tile::Wall) => return None,
-        _ if steps_remaining == 0 => return None,
-        _ => {}
-    }
-
-    let visited: HashSet<XY> = HashSet::from([current]).union(visited).cloned().collect();
-
-    let paths: Vec<Vec<Move>> = Movement::iter()
-        .filter_map(|movement| {
-            let next = movement.step(current)?;
-            if visited.contains(&next) {
-                return None;
-            }
-
-            if cheat_used && movement.is_cheat() {
-                return None;
-            }
-
-            let sub_paths = walk(
-                grid,
-                &visited,
-                next,
-                steps_remaining - 1,
-                cheat_used || movement.is_cheat(),
-            )?;
-
-            Some(
-                sub_paths
-                    .iter()
-                    .map(|p| [vec![(current, next)], p.clone()].concat())
-                    .collect::<Vec<Vec<Move>>>(),
-            )
+    let path_prefixes: Vec<Vec<XY>> = shortest_path
+        .iter()
+        .enumerate()
+        .map(|(i, _)| {
+            shortest_path
+                .iter()
+                .take(i + 1)
+                .cloned()
+                .collect::<Vec<XY>>()
         })
-        .flatten()
         .collect();
 
-    Some(paths)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Movement {
-    North,
-    South,
-    East,
-    West,
-    CheatNorth,
-    CheatSouth,
-    CheatEast,
-    CheatWest,
-}
-
-use Movement::*;
-
-impl Movement {
-    pub(crate) fn iter() -> Iter<'static, Movement> {
-        static MOVEMENT: [Movement; 8] = [
-            North, South, East, West, CheatNorth, CheatSouth, CheatEast, CheatWest,
-        ];
-        MOVEMENT.iter()
-    }
-
-    fn is_cheat(self) -> bool {
-        matches!(self, CheatNorth | CheatSouth | CheatEast | CheatWest)
-    }
-
-    fn step(self, (x, y): XY) -> Option<XY> {
-        match self {
-            North if y > 0 => Some((x, y - 1)),
-            South => Some((x, y + 1)),
-            East => Some((x + 1, y)),
-            West if x > 0 => Some((x - 1, y)),
-            CheatNorth if y > 1 => Some((x, y - 2)),
-            CheatSouth => Some((x, y + 2)),
-            CheatEast => Some((x + 2, y)),
-            CheatWest if x > 1 => Some((x - 2, y)),
-            _ => None,
-        }
-    }
+    path_prefixes
+        .iter()
+        .flat_map(|prefix| {
+            Direction::iter().filter_map(|d| {
+                let prefix = prefix.clone();
+                let d = *d;
+                let current = *prefix.last().unwrap();
+                let next = d.cheat(current)?;
+                Some([prefix.clone(), find_shortest_path(grid, next)?].concat())
+            })
+        })
+        .filter(|path| path.len() <= max_length)
+        .collect()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[allow(unused)]
-    fn m(xy: XY, directions: Vec<Movement>) -> Vec<Move> {
-        let (_, path) = directions
-            .iter()
-            .fold((xy, vec![]), |(current, path), direction| {
-                let next = direction.step(current).unwrap();
-                let current_move: Move = (current, next);
-                (next, [path, vec![current_move]].concat())
-            });
-        path
-    }
+    use crate::maze::Maze;
 
     #[test]
     fn test_no_cheats_possible() {
@@ -123,8 +49,8 @@ mod test {
         .parse()
         .unwrap();
 
-        let result: Vec<Vec<Move>> = find_cheats(&maze, 0);
-        let expected: Vec<Vec<Move>> = vec![];
+        let result: Vec<Vec<XY>> = find_cheats(&maze.grid, maze.start, 0);
+        let expected: Vec<Vec<XY>> = vec![];
 
         assert_eq!(result, expected);
     }
@@ -138,8 +64,8 @@ mod test {
         .parse()
         .unwrap();
 
-        let result: Vec<Vec<Move>> = find_cheats(&maze, 1);
-        let expected: Vec<Vec<Move>> = vec![m((0, 0), vec![CheatEast])];
+        let result: Vec<Vec<XY>> = find_cheats(&maze.grid, maze.start, 2);
+        let expected: Vec<Vec<XY>> = vec![vec![(0, 0), (2, 0)]];
 
         assert_eq!(result, expected);
     }
