@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
+use memoize::memoize;
 
 use crate::direction::Direction;
 use crate::maze::Tile;
@@ -9,45 +10,31 @@ type XY = (usize, usize);
 
 /// finds the shortes path to End tile from the given start position. Panics if grid does not
 /// contain an End tile.
-pub(crate) fn find_shortest_path(
-    grid: &HashMap<XY, Tile>,
-    max_length: usize,
-    start: XY,
-) -> Option<Vec<XY>> {
+pub(crate) fn find_shortest_path(grid: &HashMap<XY, Tile>, start: XY) -> Option<Vec<XY>> {
     let (&end, _) = grid.iter().find(|(_xy, tile)| **tile == Tile::End).unwrap();
-    walk(grid, &HashSet::new(), max_length, end, start)
+    walk(grid, HashSet::new(), end, start)
 }
 
-fn walk(
-    grid: &HashMap<XY, Tile>,
-    visited: &HashSet<XY>,
-    max_length: usize,
-    end: XY,
-    current: XY,
-) -> Option<Vec<XY>> {
+#[memoize(Ignore: grid, Ignore: visited)]
+fn walk(grid: &HashMap<XY, Tile>, visited: HashSet<XY>, end: XY, current: XY) -> Option<Vec<XY>> {
     match grid.get(&current) {
         None | Some(Tile::Wall) => return None,
         Some(Tile::End) => return Some(vec![current]),
-        _ if visited.len() >= max_length => return None,
+        _ if visited.contains(&current) => return None,
         _ => {}
     }
 
-    let visited: HashSet<XY> = HashSet::from([current]).union(visited).cloned().collect();
+    let visited = visited
+        .union(&HashSet::from([current]))
+        .cloned()
+        .collect::<HashSet<_>>();
 
     Direction::iter()
-        .filter_map(|d| {
-            let next = d.step(current)?;
-            match visited.contains(&next) {
-                true => None,
-                false => Some(next),
-            }
-        })
+        .filter_map(|d| d.step(current))
         .collect::<Vec<_>>()
         .iter()
         .sorted_by(|&&a, &&b| distance_2(a, end).cmp(&distance_2(b, end)))
-        .filter_map(|&next| {
-            Some([vec![current], walk(grid, &visited, max_length, end, next)?].concat())
-        })
+        .filter_map(|&next| Some([vec![current], walk(grid, visited.clone(), end, next)?].concat()))
         .next() // first 
 }
 
@@ -86,7 +73,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze.grid, 10, maze.start).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, vec![(0, 0), (1, 0)]);
     }
@@ -100,7 +87,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze.grid, 10, maze.start).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![South]));
     }
@@ -114,7 +101,7 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze.grid, 10, maze.start).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![South, East, East, North]));
     }
@@ -128,21 +115,8 @@ mod test {
         .parse()
         .unwrap();
 
-        let result = find_shortest_path(&maze.grid, 10, maze.start).unwrap();
+        let result = find_shortest_path(&maze.grid, maze.start).unwrap();
 
         assert_eq!(result, m((0, 0), vec![East]));
-    }
-
-    #[test]
-    fn test_path_exceeds_max_length() {
-        let maze: Maze = "
-            S..E
-        "
-        .parse()
-        .unwrap();
-
-        let result = find_shortest_path(&maze.grid, 1, maze.start);
-
-        assert_eq!(result, None);
     }
 }
