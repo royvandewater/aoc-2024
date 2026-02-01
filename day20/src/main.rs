@@ -29,7 +29,7 @@ enum Day20Error {
 fn part_1(input: &str, threshold: usize) -> Result<usize, Day20Error> {
     let maze: Maze = input.parse()?;
 
-    let shortest_path_len = find_shortest_path(&maze.grid, maze.start)
+    let shortest_path_len = find_shortest_path(&maze.grid, maze.grid.len(), maze.start)
         .ok_or(Day20Error::NoPathFound)?
         .len();
 

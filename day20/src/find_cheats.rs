@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use indicatif::ProgressIterator;
+
 use crate::direction::Direction;
 use crate::find_shortest_path;
 use crate::maze::Tile;
@@ -7,7 +9,7 @@ use crate::maze::Tile;
 type XY = (usize, usize);
 
 pub(crate) fn find_cheats(grid: &HashMap<XY, Tile>, start: XY, max_length: usize) -> Vec<Vec<XY>> {
-    let shortest_path = find_shortest_path(grid, start).unwrap();
+    let shortest_path = find_shortest_path(grid, grid.len(), start).unwrap();
 
     let path_prefixes: Vec<Vec<XY>> = shortest_path
         .iter()
@@ -23,14 +25,22 @@ pub(crate) fn find_cheats(grid: &HashMap<XY, Tile>, start: XY, max_length: usize
 
     path_prefixes
         .iter()
+        .progress()
         .flat_map(|prefix| {
-            Direction::iter().filter_map(|d| {
-                let prefix = prefix.clone();
-                let d = *d;
-                let current = *prefix.last().unwrap();
-                let next = d.cheat(current)?;
-                Some([prefix.clone(), find_shortest_path(grid, next)?].concat())
-            })
+            if max_length < prefix.len() {
+                return vec![];
+            }
+
+            Direction::iter()
+                .filter_map(|d| {
+                    let prefix = prefix.clone();
+                    let steps_left = max_length - prefix.len();
+                    let d = *d;
+                    let current = *prefix.last().unwrap();
+                    let next = d.cheat(current)?;
+                    Some([prefix.clone(), find_shortest_path(grid, steps_left, next)?].concat())
+                })
+                .collect()
         })
         .filter(|path| path.len() <= max_length)
         .collect()

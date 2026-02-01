@@ -67,7 +67,7 @@ impl FromStr for Maze {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Tile {
     Start,
     End,
